@@ -1,10 +1,11 @@
 import numpy as np
 from util import *
 
+##### ALGORITHMS #############################################
 def backtracking_line_search(f, gradf, p, x, Z, W):
     ρ = 0.5
     c = 0.05
-    α = 2
+    α = 1
     
     ϕ_k = f(x + α * p, Z, W)
     dF = gradf(x, Z, W)
@@ -13,13 +14,13 @@ def backtracking_line_search(f, gradf, p, x, Z, W):
         α = ρ * α
         ϕ_k = f(x + α * p, Z, W)
         it += 1
-#     print(it)
-    return α
 
+    return α     
+    
+    
 def line_search(f, grad,  p, x, z, w):
     
     #Line search algorithm satisfying strong Wolfe conditions. P. 60 in NW
-    
     alpha_prev = 0
     alpha_max = 10000
     alpha_curr = 2
@@ -29,13 +30,15 @@ def line_search(f, grad,  p, x, z, w):
     c2 = 0.5
     
     i = 1
-    while True:
-        #print(f(x + alpha_curr*p))
-        zero = np.array(np.zeros(len(x)))
-        dPhi_0 = np.dot(grad(zero, z, w),p)
-        dPhi_i = np.dot(grad(x + alpha_curr*p, z, w),p)
+    while i < 1000:
+        dPhi_0 = grad(x, z, w).dot(p)
+        dPhi_i = grad(x + alpha_curr*p, z, w).dot(p)
         
-        if (f(x + alpha_curr*p, z, w) > f(zero, z, w) + c1*alpha_curr*dPhi_0) or ((f(x + alpha_curr*p, z, w) >= f(x + alpha_prev*p, z, w) and i > 1)):
+        f_prev = f(x + alpha_prev*p, z, w)
+        f_next = f(x + alpha_curr * p, z, w)
+        f_curr = f(x, z, w)
+        
+        if (f_next > f_curr + c1 * alpha_curr * dPhi_0) or (f_next >= f_prev and i > 1):
             return zoom(f, grad, p, x, c1, c2, alpha_curr, alpha_prev, z, w)
         
         if np.abs(dPhi_i) <= -c2*dPhi_0: 
@@ -48,9 +51,7 @@ def line_search(f, grad,  p, x, z, w):
         
         i += 1
         
-        #breaking point?
-        if i == 1000:
-            return alpha_curr
+    return alpha_curr
         
     
     
@@ -84,7 +85,7 @@ def zoom(f, grad, p, x, c1, c2, Alpha_high, Alpha_low, z, w):
     tol = 10**-4
     alpha_curr = alpha_high
     alpha_prev = alpha_low
-    while True:
+    while i < 1000:
         #Interpolate, choose alpha_j between hi & low
         #alpha_j = (alpha_high + alpha_low)/2
         
@@ -92,14 +93,13 @@ def zoom(f, grad, p, x, c1, c2, Alpha_high, Alpha_low, z, w):
             return alpha_high
         alpha_j = interpolate(alpha_high, alpha_low, f, grad, p, x, z, w)
         #print(alpha_j)
-        zero = np.array(np.zeros(len(x)))
         phi_j = f(x + alpha_j*p, z, w)
         phi_low = f(x + alpha_low*p, z, w)
         
-        dPhi_0 = np.dot(grad(zero, z, w),p)
+        dPhi_0 = np.dot(grad(x, z, w),p) # Bør være grad i x
         
         
-        if (phi_j > f(zero, z, w) + c1*alpha_j*dPhi_0) or (phi_j >= phi_low):
+        if (phi_j > f(x, z, w) + c1*alpha_j*dPhi_0) or (phi_j >= phi_low):
             alpha_high = alpha_j
         else:
             dPhi_i = np.dot(grad(x + alpha_j*p, z, w),p)
@@ -108,16 +108,12 @@ def zoom(f, grad, p, x, c1, c2, Alpha_high, Alpha_low, z, w):
             if dPhi_i*(alpha_high - alpha_low) >= 0:
                 alpha_high = alpha_low
             alpha_low = alpha_j
-        
-        #breaking point
-        i += 1
-        if i == 1000:
-            #print(alpha_j)
-            return alpha_j
+      
+    return alpha_j
 
 
 # Optimization algorithms
-def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3):
+def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3, output = False):
     p = -grad(x0, Z, W)
     x_k = x0
     it = 0
@@ -133,16 +129,17 @@ def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3):
         p = -grad(x_k, Z, W)
         it += 1
         
-        if it % 500 == 0:
+        if it % 500 == 0 and output:
             print("\niter:", it)
             print("α =", α)
             print("f(x) =", f(x_k, Z, W))
             print("\n")
+    print("df: ", np.linalg.norm(grad(x_k, Z, W)))
     return x_k, it, f(x_k, Z, W)
 
 
 # Optimization algorithm
-def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-3):
+def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-5, output = False):
     m, n = Z.shape
     k = n*(n+1)//2
 
@@ -153,7 +150,7 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-3):
     dF = grad(x_k, Z, W)
     
     it = 0
-    while np.linalg.norm(dF) > tol and it < 10000:
+    while np.linalg.norm(dF) > tol and it < 20000:
         dF = grad(x_k, Z, W)
         
         p_k = - H.dot(dF)
@@ -187,14 +184,16 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-3):
         dF = dF_next
         
         # Print progress
-        if it % 200 == 0:
+        if it % 200 == 0  and output:
             print("\niter:", it)
             print("α =", α_k)
             print("f(x) =", f(x_k, Z, W))
             print("\n")
-            
-        return x_k, it, f(x_k, Z, W)
-
+        
+    print("df: ", np.linalg.norm(grad(x_k, Z, W)))
+    return x_k, it, f(x_k, Z, W)
+    
+    
 if __name__ == "__main__":
     A = np.array((1, 0, 0, 1)).reshape(2,2)
     f = lambda x, Z, W: 0.5 * x.T.dot(A).dot(x)

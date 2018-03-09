@@ -33,7 +33,7 @@ def finite_differences(model, m = 10, n = 2):
     
     else:
         print("g = %e" %g)
-        for ep in 10.0**np.arange(2, -9, -1):
+        for ep in 10.0**np.arange(-1, -9, -1):
             g_app = ( f(x + ep*p, Z, W) - f0 )/ep
             error = abs(g_app - g)/abs(g)
             print('ep = %e, error = %e, g_app = %e' % (ep,error, g_app))
@@ -49,7 +49,7 @@ def plot_result(ax, A, b, Z, W, contour_function, xlim =(-5,5), ylim = (-5, 5)):
     plt.tight_layout()
     return ax   
 
-def optimize(x, Z, W, method, f, df, output = False, backtrack = False):
+def optimize(x, Z, W, method, f, df, backtrack = False, output = False):
     a, it, SSE = method(f, df, x, Z, W, backtrack) 
     if output:
         print("Iterations: ", it)
@@ -68,23 +68,17 @@ if __name__ == "__main__":
     finite_differences(2)
     print("\n ######  SLEEP 2 Seconds #######")
     time.sleep(2)
-    print("##### Start Optimization algorithms ######")
-    
-    m, n = (10, 2)
-    
-    x, Z, W = U.generate_random(m, n)
-    #Model 2
-    A, b = optimize(x, Z, W, alg.steepest_descent, m2.f, m2.df)
-    fig1 = plt.figure()
-    ax1 = fig1.add_subplot(111)
-    plot_result(ax1, A, b, Z, W, m2.H)
-    plt.show()
-    
+    print("##### Start Optimization algorithms ######")    
     print("#"*10 + " Start comparing methods and models " + 10*"#")
     
     # Iterate through different data sizes.
+    n = 2
     for m in [3, 5, 7, 10, 13, 15]:
         print("\n##### m = "+ str(m) + " #####\n")
+        print("#"*5 + "Linesearch algorithm" + "#"*5)
+        
+        x, Z, W = U.generate_random(m, n)
+
         # Initiate figures
         fig = plt.figure()
         ax1 = fig.add_subplot(221)
@@ -95,11 +89,36 @@ if __name__ == "__main__":
         ax2.set_title("Model 1: BFGS")
         ax3.set_title("Model 2: Steepest Descent")
         ax4.set_title("Model 2. BFGS")
-        x, Z, W = U.generate_random(m, n)
        
+        solve_and_plot(ax1, x, Z, W, alg.steepest_descent, m1.f, m1.df, m1.G, backtrack = False, output = True)
+        solve_and_plot(ax2, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = False, output = True)
+        solve_and_plot(ax3, x, Z, W, alg.steepest_descent, m2.f, m2.df, m2.H, backtrack = False, output = True)
+        solve_and_plot(ax4, x, Z, W, alg.bfgs_method, m2.f, m2.df, m2.H, backtrack = False, output = True)
+        plt.savefig("./figures/" + str(m) + "points_nobacktrack.png")
+        
+        print("#"*5 + "Bactrack Linesearch algorithm" + "#"*5)
+        # Initiate figures
+        fig = plt.figure()
+        ax1 = fig.add_subplot(221)
+        ax2 = fig.add_subplot(222)
+        ax3 = fig.add_subplot(223)
+        ax4 = fig.add_subplot(224)
+        ax1.set_title("Model 1: Steepest Descent")
+        ax2.set_title("Model 1: BFGS")
+        ax3.set_title("Model 2: Steepest Descent")
+        ax4.set_title("Model 2. BFGS")
+        
         solve_and_plot(ax1, x, Z, W, alg.steepest_descent, m1.f, m1.df, m1.G, backtrack = True, output = True)
         solve_and_plot(ax2, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = True, output = True)
         solve_and_plot(ax3, x, Z, W, alg.steepest_descent, m2.f, m2.df, m2.H, backtrack = True, output = True)
         solve_and_plot(ax4, x, Z, W, alg.bfgs_method, m2.f, m2.df, m2.H, backtrack = True, output = True)
         plt.savefig("./figures/" + str(m) + "points_backtrack.png")
-    
+        
+    m, n = (50, 2)
+    x, Z, W = U.generate_random(m, n)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    solve_and_plot(ax1, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = True, output = True)
+    plt.savefig("./figures/50points.png")
+    plt.show()
+
