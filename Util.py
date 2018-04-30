@@ -23,7 +23,7 @@ def generate_random(m, n, x_rand = False):
     Z = np.random.randn(m*n).reshape(m, n)
     W = np.random.choice([-1.0, 1.0], m)
     if x_rand:
-        x = np.random.randn(n+k)
+        x = np.random.randn(n+k) *5 
     else:
         x = np.array((1,0,1,0,0))
     return x, Z, W   
@@ -35,8 +35,10 @@ def generate_test_set(m, n, contourfunc, x_rand = False, misclass = False):
     W = (H > 0) * 1 + (H < 0) * (-1)
     if misclass:
         roll = np.random.rand(m)
-        H[H == 1] = (roll[H == 1] > 0.85) * -1 + (roll[H == 1] <= 0.85) * 1 
-        H[H == -1] = (roll[H == -1] > 0.85) * 1 + (roll[H == -1] <= 0.85) * -1 
+        flips = roll > 0.85
+        W = np.logical_and(np.logical_and(flips, W == 1), np.logical_and(np.logical_not(flips), W == -1)) * (-1) \
+                + np.logical_and(np.logical_and(flips, W == -1), np.logical_and(np.logical_not(flips), W == 1)) * 1
+        
     return x, Z, W
 
 

@@ -1,26 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import util
 
-def from_x_to_matrix(x):
-    n = int((-3 + np.sqrt(9+8*x.size))//2)
-    k = x.size - n
-    A = np.zeros((n, n))
-    b = np.zeros(n)
-    
-    #Insert first k coefficients into matrix
-    end = 0
-    for j in range(n):
-        start = end
-        end = start + n-j
-        A[j, j:] = x[start:end]
-        A[j+1:,j] = A[j, j+1:]
-    b = x[-n:] #Insert last n coefficients into vector
-    return A, b
 
 # Calculate h for single point z
 def hi(x, zi):
-    A, b = from_x_to_matrix(x)
+    A, b = util.from_x_to_matrix(x)
     return zi.dot(A.dot(zi)) + b.dot(zi) - 1
 
 # Calculate residual r for single point z
@@ -208,7 +194,7 @@ def evaluate_function(func, A, b, xlim = (-5, 5), ylim = (-5, 5)):
     y = np.linspace(*ylim, 101)
     xx, yy = np.meshgrid(x, y)
     X = np.stack((xx.flatten(), yy.flatten())).T
-    return xx, yy, H(X, A, b).reshape(xx.shape)
+    return xx, yy, func(X, A, b).reshape(xx.shape)
 
 
 # Minimize and visualize objective function values for a random set of points
@@ -216,7 +202,7 @@ def optimize_random(m, n, method, func, output = False):
     x, Z, W = generate_random(m, n)
     a, it = method(f, df, x, Z, W)
     print("Iterations: ", it)
-    A, b = from_x_to_matrix(a)
+    A, b = util.from_x_to_matrix(a)
     xx, yy, C = evaluate_function(func, A, b)
     
     fig = plt.figure()
