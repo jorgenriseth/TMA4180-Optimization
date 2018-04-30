@@ -4,6 +4,7 @@ import Model1 as m1
 import Model2 as m2
 import util as U
 import algorithms as alg
+import os
 import time
 
 
@@ -64,39 +65,29 @@ def solve_and_plot(ax, x, Z, W, method, f, df, contour_function, backtrack = Fal
                 
 
 if __name__ == "__main__":
+    # Make sure figure directory exists
+    figdir = "./figures"
+    if not os.path.exists(figdir):
+            os.makedirs(figdir)
+
+    # Finite differences verification for both models
     finite_differences(1)
     finite_differences(2)
+    
     print("\n ######  SLEEP 2 Seconds #######")
     time.sleep(2)
-    print("##### Start Optimization algorithms ######")    
-    print("#"*10 + " Start comparing methods and models " + 10*"#")
     
+
+    print("##### Start Optimization algorithms ######")    
+   
     # Iterate through different data sizes.
     n = 2
     for m in [3, 5, 7, 10, 13, 15]:
         print("\n##### m = "+ str(m) + " #####\n")
-        print("#"*5 + "Linesearch algorithm" + "#"*5)
         
         x, Z, W = U.generate_random(m, n)
 
-        # Initiate figures
-        fig = plt.figure()
-        ax1 = fig.add_subplot(221)
-        ax2 = fig.add_subplot(222)
-        ax3 = fig.add_subplot(223)
-        ax4 = fig.add_subplot(224)
-        ax1.set_title("Model 1: Steepest Descent")
-        ax2.set_title("Model 1: BFGS")
-        ax3.set_title("Model 2: Steepest Descent")
-        ax4.set_title("Model 2. BFGS")
-       
-        solve_and_plot(ax1, x, Z, W, alg.steepest_descent, m1.f, m1.df, m1.G, backtrack = False, output = True)
-        solve_and_plot(ax2, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = False, output = True)
-        solve_and_plot(ax3, x, Z, W, alg.steepest_descent, m2.f, m2.df, m2.H, backtrack = False, output = True)
-        solve_and_plot(ax4, x, Z, W, alg.bfgs_method, m2.f, m2.df, m2.H, backtrack = False, output = True)
-        plt.savefig("./figures/" + str(m) + "points_nobacktrack.png")
         
-        print("#"*5 + "Bactrack Linesearch algorithm" + "#"*5)
         # Initiate figures
         fig = plt.figure()
         ax1 = fig.add_subplot(221)
@@ -108,17 +99,12 @@ if __name__ == "__main__":
         ax3.set_title("Model 2: Steepest Descent")
         ax4.set_title("Model 2. BFGS")
         
+        # Perform algorithms and save the figures.
         solve_and_plot(ax1, x, Z, W, alg.steepest_descent, m1.f, m1.df, m1.G, backtrack = True, output = True)
         solve_and_plot(ax2, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = True, output = True)
         solve_and_plot(ax3, x, Z, W, alg.steepest_descent, m2.f, m2.df, m2.H, backtrack = True, output = True)
         solve_and_plot(ax4, x, Z, W, alg.bfgs_method, m2.f, m2.df, m2.H, backtrack = True, output = True)
         plt.savefig("./figures/" + str(m) + "points_backtrack.png")
         
-    m, n = (50, 2)
-    x, Z, W = U.generate_random(m, n)
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
-    solve_and_plot(ax1, x, Z, W, alg.bfgs_method, m1.f, m1.df, m1.G, backtrack = True, output = True)
-    plt.savefig("./figures/50points.png")
     plt.show()
 

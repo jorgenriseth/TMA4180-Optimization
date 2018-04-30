@@ -150,7 +150,7 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-5, output = False)
     dF = grad(x_k, Z, W)
     
     it = 0
-    while np.linalg.norm(dF) > tol and it < 20000:
+    while np.linalg.norm(dF) > tol and it < 10000:
         dF = grad(x_k, Z, W)
         
         p_k = - H.dot(dF)
