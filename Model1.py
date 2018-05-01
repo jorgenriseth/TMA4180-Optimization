@@ -1,22 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-# take in vector of unknowns, and build A matrix and c-vector
-def from_x_to_matrix(x):
-    n = int((-3 + np.sqrt(9+8*x.size))//2)
-    k = x.size - n
-    A = np.zeros((n, n))
-    c = np.zeros(n)
-    
-    #Insert first k coefficients into matrix
-    end = 0
-    for j in range(n):
-        start = end
-        end = start + n-j
-        A[j, j:] = x[start:end]
-        A[j+1:,j] = A[j, j+1:]
-    c = x[-n:] #Insert last n coefficients into vector
-    return A, c
+from Util import *
 
 # Calculate g for single point z
 def gi(x, zi):

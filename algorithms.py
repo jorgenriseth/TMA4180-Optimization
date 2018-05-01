@@ -7,12 +7,12 @@ def backtracking_line_search(f, gradf, p, x, Z, W):
     c = 0.05
     α = 1
     
-    ϕ_k = f(x + α * p, Z, W)
+    phi_k = f(x + α * p, Z, W)
     dF = gradf(x, Z, W)
     it = 0
-    while (ϕ_k >= f(x, Z, W) + c * α * dF.dot(p) and it < 200):
+    while (phi_k >= f(x, Z, W) + c * α * dF.dot(p) and it < 200):
         α = ρ * α
-        ϕ_k = f(x + α * p, Z, W)
+        phi_k = f(x + α * p, Z, W)
         it += 1
 
     return α     
@@ -204,8 +204,3 @@ if __name__ == "__main__":
     p = np.random.randn(2)
     print(backtracking_line_search(f, df, p, x0, Z, W))
     print(steepest_descent(f, df, x0, Z, W))
-    
-    
-    
-    
-
