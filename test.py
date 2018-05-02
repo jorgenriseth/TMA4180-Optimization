@@ -27,26 +27,26 @@ def constraints(x, eig_lo, eig_hi):
     return np.array((c1(x), c2(x), c3(x), c4(x), c5(x)))
 
 # C is constraints
-def P(x, Z, W, mu, C,  f):
+def P(x, mu, C,  f):
     if not (C > 0).all():
         return np.inf
     
-    return f(x, Z, W) - mu * np.sum(np.log(C))
+    return f(x) - mu * np.sum(np.log(C))
 
-def dP(x, Z, W, mu, C, dC, df):
-    return df(x, Z, W) - mu * np.sum(dC.T/C, axis = 1)
+def dP(x, mu, C, dC, df):
+    return df(x) - mu * np.sum(dC.T/C, axis = 1)
     
 def compute_lagrange(mu, C):
     return mu/C
 
-def lagrange(x, Z, W, f, L, C):
-    return f(x, Z, W) - np.sum(C*L)
+def lagrange(x, f, L, C):
+    return f(x) - np.sum(C*L)
 
-def grad_lagrange(x, Z, W, df, L, dC):
-    return df(x, Z, W) - np.sum(dC.dot(L))
+def grad_lagrange(x,df, L, dC):
+    return df(x) - np.sum(dC.dot(L))
 
-def check_KKT(x, Z, W, df, L, C, dC, TOL):
-    if np.linalg.norm(grad_lagrange(x, Z, W, df, L, dC)) < TOL:
+def check_KKT(x, df, L, C, dC, TOL):
+    if np.linalg.norm(grad_lagrange(x, df, L, dC)) < TOL:
         return False
     
     elif (C < 0).any():
@@ -59,32 +59,31 @@ def check_KKT(x, Z, W, df, L, C, dC, TOL):
         return False
     return True
 
-def barrier(x0, Z, W, f, df, eigs, mu0, TOL):
+def barrier(x0, f, df, eigs, mu0, TOL):
     it = 1
     mu = 2 * mu0
     x = x0
     C = constraints(x0, *eigs)
     dC = grad_constraints(x0, *eigs)
-    p = lambda x, Z, W: P(x, Z, W, mu, C, f)
-    dp = lambda x, Z, W: dP(x, Z, W, mu, C, dC, df)
+    p = lambda x: P(x, mu, C, f)
+    dp = lambda x: dP(x, mu, C, dC, df)
     
     while it < 99:
         print("Iter:", it)
         print(C)
         print(dC)
-        print(f(x0, Z, W))
+        print(f(x0))
 
         x, it, fk = alg.bfgs(p, dp, x, TOL = 1/it**2, backtrack = False, output = True)
         print("bfgs_done")
         C = constraints(x, *eigs)
         dC = grad_constraints(x, *eigs)
-        p = lambda x, Z, W: P(x, Z, W, mu, C, f)
-        dp = lambda x, Z, W: dP(x, Z, W, mu, C, dC, df)
+        p = lambda x: P(x, mu, C, f)
+        dp = lambda x: dP(x, mu, C, dC, df)
         
         L = compute_lagrange(mu, C)
         
-        import pdb; pdb.set_trace()
-        if check_KKT(x, Z, W, df, L, C, dC, TOL):
+        if check_KKT(x, df, L, C, dC, TOL):
             return x, it, fk
         mu /= 2
         
@@ -110,8 +109,11 @@ if __name__ == "__main__":
     plt.show()
 
     f, df = u.set_function(m2.f, m2.df, Z, W)
+    eigen_interval = (0.9, 20)
 
-    x, it, f = alg.bfgs(f, df, x0, backtrack = False)
+    x, it, f = barrier(x0, f, df, eigen_interval, 0.1, 1e-3)
+    #x, it, f = alg.bfgs(f, df, x0)
+
     A, b = u.from_x_to_matrix(x)
 
     fig = plt.figure()

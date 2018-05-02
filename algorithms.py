@@ -57,7 +57,6 @@ def linesearch(f, grad, p, x, c1, c2):
         else:
             a1 = (a1 + a_max)/2
         it += 1
-        print(it, a1)
     
     convergence = it_stop == it
     return a1, convergence
@@ -114,7 +113,7 @@ def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = False, output = False)
 
 
 # Optimization algorithm
-def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False, output = False):
+def bfgs(f, grad, x0, TOL = 1e-4, constraints = None, backtrack = False, output = False):
     it_stop = 10000
     I = np.identity(x0.size)
     H = np.identity(x0.size)
@@ -130,7 +129,7 @@ def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False, output = False):
             H = np.identity(x0.size)
             p_k = - H.dot(dF)
 
-        #p_k = p_k/np.linalg.norm(p_k) # Unit distance
+        p_k = p_k/np.linalg.norm(p_k) # Unit distance
         
         if backtrack:
             a_k, iter_succ = backtracking_linesearch(f, grad, p_k, x_k)
@@ -144,13 +143,13 @@ def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False, output = False):
         y_k = dF_next - dF
         
         # Check if "reboot" is needed
-        if s_k.dot(y_k) == 0:
-            H = np.identity(x0.size)
+        if not s_k.dot(y_k) > 0:
+            rho_k = 1/s_k.dot(y_k)
             it += 1
             continue
             
         # computing rho (6.14 in NW)
-        rho_k = 1/(np.dot(s_k,y_k))
+        rho_k = 1/s_k.dot(y_k)
         H = (I - rho_k * s_k * y_k.T) @ H @ (I - rho_k * y_k * s_k.T) + rho_k * s_k * s_k.T
 
         it += 1
