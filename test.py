@@ -74,7 +74,7 @@ def barrier(x0, Z, W, f, df, eigs, mu0, TOL):
         print(dC)
         print(f(x0, Z, W))
 
-        x, it, fk = alg.bfgs(p, dp, x, Z, W, TOL = 1/it**2, backtrack = False, output = True)
+        x, it, fk = alg.bfgs(p, dp, x, TOL = 1/it**2, backtrack = False, output = True)
         print("bfgs_done")
         C = constraints(x, *eigs)
         dC = grad_constraints(x, *eigs)
@@ -94,7 +94,7 @@ def barrier(x0, Z, W, f, df, eigs, mu0, TOL):
 
 
 if __name__ == "__main__":
-    m, n = 10, 2
+    m, n = 30, 2
     x, Z, W = u.generate_test_set(m, n, m2.H, x_rand = True, misclass = False)
     A, b = u.from_x_to_matrix(x)
     fig = plt.figure()
@@ -109,7 +109,9 @@ if __name__ == "__main__":
     u.visualize(ax, A, b, Z, W, m2.H)
     plt.show()
 
-    x, it, f = barrier(x0, Z, W, m2.f, m2.df, (0.9, 10), 0.1, TOL = 1e-3)
+    f, df = u.set_function(m2.f, m2.df, Z, W)
+
+    x, it, f = alg.bfgs(f, df, x0, backtrack = False)
     A, b = u.from_x_to_matrix(x)
 
     fig = plt.figure()

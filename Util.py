@@ -1,37 +1,47 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Retrieve dimensions from matrix x
+def get_n(x):
+    return int((-3 + np.sqrt(9+8*x.size))//2)
+
+# Insert x-values into A, b
 def from_x_to_matrix(x):
-    n = int((-3 + np.sqrt(9+8*x.size))//2)
-    k = x.size - n
+    n = get_n(x)
     A = np.zeros((n, n))
     b = np.zeros(n)
-    
-    #Insert first k coefficients into matrix
     end = 0
-    for j in range(n):
+    for j in range(n): # Insert first k coefficients into matrix
         start = end
         end = start + n-j
         A[j, j:] = x[start:end]
         A[j+1:,j] = A[j, j+1:]
-    b = x[-n:] #Insert last n coefficients into vector
+    b = x[-n:] # Insert last n coefficients into vector
     return A, b
 
-# Generate random points z, weights w, and x0
-def generate_random(m, n, x_rand = False):
-    k = n*(n+1)//2
+# For easier function calls, for given dataset f(x)
+def set_function(F, dF, Z, W):
+    return lambda x: F(x, Z, W), lambda x: dF(x, Z, W)
+
+def is_descent(p, gradient_vector):
+    return p.dot(gradient_vector) < 0
+
+# Generate random points z, weights w
+def generate_random(m, n):
     Z = np.random.randn(m*n).reshape(m, n)
     W = np.random.choice([-1.0, 1.0], m)
-    if x_rand:
-        x = np.random.randn(n+k) *5 
-    else:
-        x = np.array((1,0,1,0,0))
-    return x, Z, W   
-
+    return Z, W
 
 # Generate test set fitted to start value
 def generate_test_set(m, n, contourfunc, x_rand = False, misclass = False):
-    x, Z, W = generate_random(m, n, x_rand)
+    k = n*(n+1)//2
+    Z, W = generate_random(m, n)
+    if x_rand:
+        x = np.random.randn(n+k)
+    else:
+        assert n == 2
+        x = np.array((1, 0, 1, 0, 0))
+
     A, b = from_x_to_matrix(x)
     H =  contourfunc(Z, A, b)
     W = (H > 0) * -1 + (H < 0) * 1
@@ -40,10 +50,7 @@ def generate_test_set(m, n, contourfunc, x_rand = False, misclass = False):
         flips = roll > 0.85
         W = np.logical_and(np.logical_and(flips, W == 1), np.logical_and(np.logical_not(flips), W == -1)) * (-1) \
                 + np.logical_and(np.logical_and(flips, W == -1), np.logical_and(np.logical_not(flips), W == 1)) * 1
-        
     return x, Z, W
-
-
 
 # Given A, b/c, evaluate function values for contourplot.
 def evaluate_function(contourfunc, A, b, xlim = (-5, 5), ylim = (-5, 5)):
@@ -55,12 +62,14 @@ def evaluate_function(contourfunc, A, b, xlim = (-5, 5), ylim = (-5, 5)):
  
 
 # Minimize and visualize objective function values for a random set of points
-def optimize_random(m, n, method, f, df, contourfunc, output = False):
-    x, Z, W = generate_random(m, n)
-    a, it, F = method(f, df, x, Z, W)
+def optimize_random(m, n, method, F, dF, contourfunc, output = False):
+    x, Z, W = generate_test_set(m, n, contourfunc, x_rand = True)
+    f = lambda x: F(x, Z, W)
+    df = lambda x: dF(x, Z, W)
+    x = np.random.randn(x.size)
+    a, it, F = method(f, df, x)
     print("Iterations: ", it)
     A, b = from_x_to_matrix(a)
-    xx, yy, C = evaluate_function(contourfunc, A, b)
     
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
@@ -82,13 +91,10 @@ def visualize(ax, A, b, Z, W, contourfunc):
     ax.legend()
     return ax
 
-
-
-
 if __name__ == "__main__":
     import Model2 as m2
     import algorithms as alg
     m, n = (10, 2)
 
-    optimize_random(m, n, alg.bfgs_method, m2.f, m2.df, m2.H)
+    optimize_random(m, n, alg.bfgs, m2.f, m2.df, m2.H)
     plt.show()    
