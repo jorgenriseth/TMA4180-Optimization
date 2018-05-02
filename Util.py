@@ -34,7 +34,7 @@ def generate_test_set(m, n, contourfunc, x_rand = False, misclass = False):
     x, Z, W = generate_random(m, n, x_rand)
     A, b = from_x_to_matrix(x)
     H =  contourfunc(Z, A, b)
-    W = (H > 0) * 1 + (H < 0) * (-1)
+    W = (H > 0) * -1 + (H < 0) * 1
     if misclass:
         roll = np.random.rand(m)
         flips = roll > 0.85

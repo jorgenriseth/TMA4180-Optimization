@@ -137,7 +137,7 @@ def steepest_descent(f, grad, x0, Z, W, backtrack = False, tol = 1e-3, output = 
 
 
 # Optimization algorithm
-def bfgs_method(f, grad, x0, Z, W, backtrack = False, tol = 1e-4, output = False):
+def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-4, output = False):
     m, n = Z.shape
     k = n*(n+1)//2
 
