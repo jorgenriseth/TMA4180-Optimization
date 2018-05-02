@@ -111,12 +111,12 @@ def interpolate(alpha2, alpha1, f, grad, p, x, z, w):
     
 
 # Optimization algorithms
-def steepest_descent(f, grad, x0, Z, W, backtrack = False, tol = 1e-3, output = False):
+def steepest_descent(f, grad, x0, Z, W, TOL = 1e-3, backtrack = False, output = False):
     p = -grad(x0, Z, W)
     x_k = x0
     it = 0
     
-    while np.linalg.norm(p) > tol and it < 10000:
+    while np.linalg.norm(p) > TOL and it < 10000:
         
         if backtrack:
             a = backtracking_linesearch(f, grad, p, x_k, Z, W)
@@ -137,7 +137,7 @@ def steepest_descent(f, grad, x0, Z, W, backtrack = False, tol = 1e-3, output = 
 
 
 # Optimization algorithm
-def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-4, output = False):
+def bfgs_method(f, grad, x0, Z, W, TOL = 1e-4, backtrack = True, output = False):
     m, n = Z.shape
     k = n*(n+1)//2
 
@@ -148,7 +148,7 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-4, output = False)
     dF = grad(x_k, Z, W)
     
     it = 0
-    while np.linalg.norm(dF) > tol and it < 10000:
+    while np.linalg.norm(dF) > TOL and it < 10000:
         dF = grad(x_k, Z, W)
         
         p_k = - H.dot(dF)
