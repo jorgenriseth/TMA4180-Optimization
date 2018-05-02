@@ -1,64 +1,98 @@
 import numpy as np
-from util import *
+from Util import *
 
 ##### ALGORITHMS #############################################
-def backtracking_line_search(f, gradf, p, x, Z, W):
-    ρ = 0.5
+def backtracking_linesearch(f, gradf, p, x, Z, W):
+    rho = 0.5
     c = 0.05
-    α = 1
+    a = 1
     
-    phi_k = f(x + α * p, Z, W)
+    phi_k = f(x + a * p, Z, W)
     dF = gradf(x, Z, W)
     it = 0
-    while (phi_k >= f(x, Z, W) + c * α * dF.dot(p) and it < 200):
-        α = ρ * α
-        phi_k = f(x + α * p, Z, W)
+    while (phi_k >= f(x, Z, W) + c * a * dF.dot(p) and it < 200):
+        a = rho * a
+        phi_k = f(x + a * p, Z, W)
         it += 1
 
-    return α     
+    return a     
     
     
-def line_search(f, grad,  p, x, z, w):
+def linesearch(f, grad, p, x, Z, W, c1, c2):
+    a_max = 10000
+    a0 = 0     # Corresponding to alpha_i-1
+    a1 = a_max/2    # Coresponding to alpha_i 
+
+
+    it = 0
+    phi0 = f(x, Z, W)
+    Dphi0 = grad(x, Z, W).dot(p)
+
+    while it < 9999:
+        phi1 = f(x + a1 * p, Z, W)
+
+        if (phi1 > phi0 + c1 * a1 * Dphi0) or ( phi1 >= phi0 and it > 0 ):
+            return zoom(a0, a1, f, grad, x, Z, W, p, c1, c2)
+
+        Dphi1 = grad(x + a1 * p, Z, W).dot(p)
+
+        if np.abs(Dphi1) <= -c2 * Dphi0:
+            return a1
+
+        if Dphi1 >= 0:
+            return zoom(a1, a0, f, grad, x, Z, W, p, c1, c2)
+
+        a0 = a1
+
+        if a_max == np.inf:
+            a1 *= 2
+        else:
+            a1 = (a1 + a_max)/2
+        it += 1
+        print(it, a1)
     
-    #Line search algorithm satisfying strong Wolfe conditions. P. 60 in NW
-    alpha_prev = 0
-    alpha_max = 10000
-    alpha_curr = 2
+    print("Couldn't find alpha by linesearch, return last")
+    return a1
+
+
+
+# Zoom algorithm, p.61 in NW, for use in linesearch
+def zoom(a_lo, a_hi, f, grad, x, Z, W, p, c1, c2):
+
+    it = 0
+
+    phi_0 = f(x, Z, W)
+
+    Dphi_0 = grad(x, Z, W).dot(p)
     
-    #Picked some random numbers
-    c1 = 1e-4
-    c2 = 0.5
-    
-    i = 1
-    while i < 1000:
-        dPhi_0 = grad(x, z, w).dot(p)
-        dPhi_i = grad(x + alpha_curr*p, z, w).dot(p)
+    while it < 99:
+        a_j = (a_hi + a_lo)/2
+        phi_j = f(x + a_j * p, Z, W)
+        phi_lo = f(x + a_lo * p, Z, W)
+ 
+        if (phi_j > phi_0 + c1 * a_j * Dphi_0) or (phi_j >= phi_lo):
+            a_hi = a_j
         
-        f_prev = f(x + alpha_prev*p, z, w)
-        f_next = f(x + alpha_curr * p, z, w)
-        f_curr = f(x, z, w)
+        else:
+            Dphi_j = grad(x, Z, W).dot(p)
+
+            if (np.abs(Dphi_j) <= -2 * Dphi_0):
+                return a_j
+
+            elif Dphi_j*(a_hi - a_lo) >= 0:
+                a_hi = a_lo
+
+            a_lo = a_j
         
-        if (f_next > f_curr + c1 * alpha_curr * dPhi_0) or (f_next >= f_prev and i > 1):
-            return zoom(f, grad, p, x, c1, c2, alpha_curr, alpha_prev, z, w)
-        
-        if np.abs(dPhi_i) <= -c2*dPhi_0: 
-            return alpha_curr
-        if dPhi_i >= 0:
-            return zoom(f, grad, p, x, c1, c2, alpha_prev, alpha_curr, z, w)
-        
-        alpha_prev = alpha_curr
-        alpha_curr = (alpha_curr + alpha_max)/2
-        
-        i += 1
-        
-    return alpha_curr
-        
-    
+        it += 1
+
+    print("Counldnt find by zoom, ")
+    return a_j
+
+
     
 def interpolate(alpha2, alpha1, f, grad, p, x, z, w):
-    
     #As described on p. 59 in NW. A cubic interpolation method to determine current step lenght within a interval    
-    
     alpha_curr = alpha2
     alpha_prev = alpha1
     
@@ -75,45 +109,9 @@ def interpolate(alpha2, alpha1, f, grad, p, x, z, w):
     return alpha_curr - (alpha_curr - alpha_prev)*(dPhi_curr + d2 - d1)/(dPhi_curr - dPhi_prev + 2*d2)
 
     
-def zoom(f, grad, p, x, c1, c2, Alpha_high, Alpha_low, z, w):
-    
-    #Zoom algorithm as described on p. 61 in NW. Used for finding optimal step lenght
-    alpha_low = Alpha_low
-    alpha_high = Alpha_high
-    
-    i = 0
-    tol = 10**-4
-    alpha_curr = alpha_high
-    alpha_prev = alpha_low
-    while i < 1000:
-        #Interpolate, choose alpha_j between hi & low
-        #alpha_j = (alpha_high + alpha_low)/2
-        
-        if (np.abs(alpha_high - alpha_low) < tol):
-            return alpha_high
-        alpha_j = interpolate(alpha_high, alpha_low, f, grad, p, x, z, w)
-        #print(alpha_j)
-        phi_j = f(x + alpha_j*p, z, w)
-        phi_low = f(x + alpha_low*p, z, w)
-        
-        dPhi_0 = np.dot(grad(x, z, w),p) # Bør være grad i x
-        
-        
-        if (phi_j > f(x, z, w) + c1*alpha_j*dPhi_0) or (phi_j >= phi_low):
-            alpha_high = alpha_j
-        else:
-            dPhi_i = np.dot(grad(x + alpha_j*p, z, w),p)
-            if np.abs(dPhi_i) <= -c2*dPhi_0:
-                return alpha_j
-            if dPhi_i*(alpha_high - alpha_low) >= 0:
-                alpha_high = alpha_low
-            alpha_low = alpha_j
-      
-    return alpha_j
-
 
 # Optimization algorithms
-def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3, output = False):
+def steepest_descent(f, grad, x0, Z, W, backtrack = False, tol = 1e-3, output = False):
     p = -grad(x0, Z, W)
     x_k = x0
     it = 0
@@ -121,17 +119,17 @@ def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3, output = F
     while np.linalg.norm(p) > tol and it < 10000:
         
         if backtrack:
-            α = backtracking_line_search(f, grad, p, x_k, Z, W)
+            a = backtracking_linesearch(f, grad, p, x_k, Z, W)
         else:
-            α = line_search(f, grad, p, x_k, Z, W)
+            a = linesearch(f, grad, p, x_k, Z, W, 1e-4, 0.9)
             
-        x_k = x_k + α * p
+        x_k = x_k + a * p
         p = -grad(x_k, Z, W)
         it += 1
         
         if it % 500 == 0 and output:
             print("\niter:", it)
-            print("α =", α)
+            print("α =", a)
             print("f(x) =", f(x_k, Z, W))
             print("\n")
     print("df: ", np.linalg.norm(grad(x_k, Z, W)))
@@ -139,7 +137,7 @@ def steepest_descent(f, grad, x0, Z, W, backtrack = True, tol = 1e-3, output = F
 
 
 # Optimization algorithm
-def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-5, output = False):
+def bfgs_method(f, grad, x0, Z, W, backtrack = False, tol = 1e-4, output = False):
     m, n = Z.shape
     k = n*(n+1)//2
 
@@ -157,9 +155,9 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-5, output = False)
         p_k = p_k/np.linalg.norm(p_k)
         
         if backtrack:
-            α_k = backtracking_line_search(f, grad, p_k, x_k, Z, W)
+            α_k = backtracking_linesearch(f, grad, p_k, x_k, Z, W)
         else:
-            α_k = line_search(f, grad, p_k, x_k, Z, W)
+            α_k = linesearch(f, grad, p_k, x_k, Z, W, 1e-3, 0.9)
         
         x_next = x_k + α_k * p_k
         dF_next = grad(x_next, Z, W)
@@ -195,12 +193,8 @@ def bfgs_method(f, grad, x0, Z, W, backtrack = True, tol = 1e-5, output = False)
     
     
 if __name__ == "__main__":
-    A = np.array((1, 0, 0, 1)).reshape(2,2)
-    f = lambda x, Z, W: 0.5 * x.T.dot(A).dot(x)
-    df = lambda x, Z, W: A.dot(x)
-    x0 = np.array((10, 7))
-    Z = np.zeros(2)
-    W = np.zeros(2)
-    p = np.random.randn(2)
-    print(backtracking_line_search(f, df, p, x0, Z, W))
-    print(steepest_descent(f, df, x0, Z, W))
+    import Model2 as m2
+
+    m, n = (15, 2)
+    optimize_random(m, n, steepest_descent, m2.f, m2.df, m2.H)
+    plt.show()    

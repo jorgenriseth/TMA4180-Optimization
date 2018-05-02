@@ -28,6 +28,8 @@ def generate_random(m, n, x_rand = False):
         x = np.array((1,0,1,0,0))
     return x, Z, W   
 
+
+# Generate test set fitted to start value
 def generate_test_set(m, n, contourfunc, x_rand = False, misclass = False):
     x, Z, W = generate_random(m, n, x_rand)
     A, b = from_x_to_matrix(x)
@@ -66,7 +68,7 @@ def optimize_random(m, n, method, f, df, contourfunc, output = False):
     
     if output:
         print("W                Z                            W")
-        Res = R(a, Z, W)
+        Res = m2.R(a, Z, W)
         for i in range(m):
             print(W[i], " ", Z[i], " "*10,  Res[i])
 
@@ -88,5 +90,5 @@ if __name__ == "__main__":
     import algorithms as alg
     m, n = (10, 2)
 
-    optimize_random(m, n, alg.steepest_descent, m2.f, m2.df, m2.H)
+    optimize_random(m, n, alg.bfgs_method, m2.f, m2.df, m2.H)
     plt.show()    

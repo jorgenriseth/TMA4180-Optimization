@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import util
+import Util
 
 
 # Calculate h for single point z
 def hi(x, zi):
-    A, b = util.from_x_to_matrix(x)
+    A, b = Util.from_x_to_matrix(x)
     return zi.dot(A.dot(zi)) + b.dot(zi) - 1
 
 # Calculate residual r for single point z
