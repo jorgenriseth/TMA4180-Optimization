@@ -1,6 +1,7 @@
 .Rhistory
 *.Rproj
 .RData
+.vscode
 
 .ipynb_checkpoints
 __pycache__
