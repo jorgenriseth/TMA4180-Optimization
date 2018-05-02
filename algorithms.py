@@ -28,7 +28,7 @@ def linesearch(f, grad, p, x, Z, W, c1, c2):
     phi0 = f(x, Z, W)
     Dphi0 = grad(x, Z, W).dot(p)
 
-    while it < 9999:
+    while it < 199:
         phi1 = f(x + a1 * p, Z, W)
 
         if (phi1 > phi0 + c1 * a1 * Dphi0) or ( phi1 >= phi0 and it > 0 ):
@@ -86,27 +86,10 @@ def zoom(a_lo, a_hi, f, grad, x, Z, W, p, c1, c2):
         
         it += 1
 
-    print("Counldnt find by zoom, ")
+    print("Counldnt find by zoom, {}, {}".format(a_lo, a_hi))
     return a_j
 
 
-    
-def interpolate(alpha2, alpha1, f, grad, p, x, z, w):
-    #As described on p. 59 in NW. A cubic interpolation method to determine current step lenght within a interval    
-    alpha_curr = alpha2
-    alpha_prev = alpha1
-    
-    phi_curr = f(x + alpha_curr*p, z, w)
-    phi_prev = f(x + alpha_prev*p, z, w)
-    
-    dPhi_curr = np.dot(grad(x + alpha_curr*p, z, w),p)
-    dPhi_prev = np.dot(grad(x + alpha_prev*p, z, w),p)
-    
-    d1 = dPhi_prev + dPhi_curr - 3*(phi_prev - phi_curr)/(alpha_prev - alpha_curr)
-    d2 = np.sign(alpha_curr - alpha_prev)*np.sqrt(d1**2 - dPhi_prev*dPhi_curr)
-    
-    
-    return alpha_curr - (alpha_curr - alpha_prev)*(dPhi_curr + d2 - d1)/(dPhi_curr - dPhi_prev + 2*d2)
 
     
 
@@ -116,12 +99,13 @@ def steepest_descent(f, grad, x0, Z, W, TOL = 1e-3, backtrack = False, output = 
     x_k = x0
     it = 0
     
-    while np.linalg.norm(p) > TOL and it < 10000:
+    while np.linalg.norm(p) > TOL and it < 100:
+        p /= np.linalg.norm(p)
         
         if backtrack:
             a = backtracking_linesearch(f, grad, p, x_k, Z, W)
         else:
-            a = linesearch(f, grad, p, x_k, Z, W, 1e-4, 0.9)
+            a = linesearch(f, grad, p, x_k, Z, W, 1e-4, 0.5)
             
         x_k = x_k + a * p
         p = -grad(x_k, Z, W)
@@ -137,7 +121,7 @@ def steepest_descent(f, grad, x0, Z, W, TOL = 1e-3, backtrack = False, output = 
 
 
 # Optimization algorithm
-def bfgs_method(f, grad, x0, Z, W, TOL = 1e-4, backtrack = True, output = False):
+def bfgs(f, grad, x0, Z, W, TOL = 1e-4, backtrack = True, output = False):
     m, n = Z.shape
     k = n*(n+1)//2
 
@@ -155,19 +139,27 @@ def bfgs_method(f, grad, x0, Z, W, TOL = 1e-4, backtrack = True, output = False)
         p_k = p_k/np.linalg.norm(p_k)
         
         if backtrack:
-            α_k = backtracking_linesearch(f, grad, p_k, x_k, Z, W)
+            a_k = backtracking_linesearch(f, grad, p_k, x_k, Z, W)
         else:
-            α_k = linesearch(f, grad, p_k, x_k, Z, W, 1e-3, 0.9)
+            a_k = linesearch(f, grad, p_k, x_k, Z, W, 1e-4, 0.9)
         
-        x_next = x_k + α_k * p_k
+        x_next = x_k + a_k * p_k
         dF_next = grad(x_next, Z, W)
         
         s_k = x_next - x_k
         y_k = dF_next - dF
         
+        # Print progress
+        if it % 200 == 0  and output:
+            print("\niter:", it)
+            print("α =", a_k)
+            print("f(x) =", f(x_k, Z, W))
+            print("\n")
+        
         # Check if "reboot" is needed
         if s_k.dot(y_k) == 0:
             H = I
+            it += 1
             continue
             
         # computing rho (6.14 in NW)
@@ -181,12 +173,6 @@ def bfgs_method(f, grad, x0, Z, W, TOL = 1e-4, backtrack = True, output = False)
         x_k = x_next
         dF = dF_next
         
-        # Print progress
-        if it % 200 == 0  and output:
-            print("\niter:", it)
-            print("α =", α_k)
-            print("f(x) =", f(x_k, Z, W))
-            print("\n")
         
     print("df: ", np.linalg.norm(grad(x_k, Z, W)))
     return x_k, it, f(x_k, Z, W)
