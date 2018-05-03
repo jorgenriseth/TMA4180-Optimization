@@ -8,7 +8,7 @@ def backtracking_linesearch(f, gradf, p, x):
     rho = 0.5
     c = 0.05
     a = 1
-    it_stop = 200
+    it_stop = 1000
 
     f0 = f(x)
     phi = f(x + a * p)
@@ -25,7 +25,7 @@ def backtracking_linesearch(f, gradf, p, x):
     
 
 # NW Algorithm 3.5, Line Search, p.60
-def linesearch(f, grad, p, x, c1, c2):
+def linesearch(f, grad, p, x, c1 = 1e-4, c2= 0.9):
     a_max = 2
     a0 = 0     # Corresponding to alpha_i-1
     a1 = a_max/2    # Coresponding to alpha_i
@@ -93,7 +93,7 @@ def zoom(a_lo, a_hi, f, grad, x, p, c1, c2):
 # NW Steepest Descent, ~p.21
 def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = False, output = False):
     p = -grad(x0)
-    x_k = x0
+    x1 = x0
     it_stop = 200
 
     it = 0
@@ -101,67 +101,115 @@ def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = False, output = False)
         p /= np.linalg.norm(p)
         
         if backtrack:
-            a = backtracking_linesearch(f, grad, p, x_k)
+            a, iter_succ = backtracking_linesearch(f, grad, p, x1)
         else:
-            a = linesearch(f, grad, p, x_k, 1e-4, 0.5)
+            a, iter_succ = linesearch(f, grad, p, x1, 1e-4, 0.5)
             
-        x_k = x_k + a * p
-        p = -grad(x_k)
+        x1 = x1 + a * p
+        p = -grad(x1)
         it += 1
 
-    return x_k, it, f(x_k)
+    return x1, it, f(x1)
+
+def bfgs_constrained(f, grad, x0, constraint_func = None, TOL = 1e-4, backtrack = False):
+    assert constraint_func
+    if not Util.is_feasible(constraint_func, x0):
+        print("Not feasible x0: {}, c(x):".format(x0))
+        raise Exception("Not feasible startpoint")
+    it_stop = 1000
+    I = np.identity(x0.size)
+    H = I
+    x1 = x0
+    dF1 = grad(x1)
+
+    it = 0
+    while np.linalg.norm(dF1) > TOL and it < it_stop:
+        it += 1
+        dF0 = dF1
+        x0 = x1
+        p = -H.dot(dF0)
+
+        if p.dot(dF0) > 0: # Check if truly descent dir
+            print("Reboot, not descent dir")
+            H = I
+            continue
+        
+        p = p/np.linalg.norm(p) #Unit direction vector
+
+        a, iter_succ = linesearch(f, grad, p, x0)
+        x1 = x0 + a*p
+        inner = 0
+        while not Util.is_feasible(constraint_func, x1):
+            a = a * 0.1
+            x1 = x0 + a*p
+            inner += 1
+
+        dF1 = grad(x1)
+        s = x1 - x0
+        y = dF1 - dF0
+
+
+        if not y.dot(s) > 0: # Check curvature conditions
+            print("Iter {}, Non-update, curvature".format(it))
+            continue
+        rho = 1/y.dot(s)
+        H = (I - rho * np.outer(s, y)).dot(H).dot(I - rho * np.outer(s, y))\
+        + rho * np.outer(s, s)
+    
+    print("BFGS_const, iter {}, f(x) = {}".format(it, f(x1)))
+    return x1, it, f(x1)
+
 
 
 # Optimization algorithm
-def bfgs(f, grad, x0, TOL = 1e-4, constraints = None, backtrack = False, output = False):
+def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False):
     it_stop = 10000
     I = np.identity(x0.size)
-    H = np.identity(x0.size)
-    x_k = x0
-    dF = grad(x_k)
+    H = I
+    x1 = x0
+    dF1 = grad(x1)
     
     it = 0
-    while np.linalg.norm(dF) > TOL and it < it_stop:
-        dF = grad(x_k)
-        p_k = - H.dot(dF)
+    while np.linalg.norm(dF1) > TOL and it < it_stop:
+        dF0 = dF1
+        x0 = x1
+        p = - H.dot(dF0)
 
-        if not Util.is_descent(p_k, dF):
-            H = np.identity(x0.size)
-            p_k = - H.dot(dF)
-
-        p_k = p_k/np.linalg.norm(p_k) # Unit distance
+        if p.dot(dF0) > 0:
+            print("Reboot, Iter {}: Not Descent Dir".format(it))
+            H = I
+            continue
+        p = p/np.linalg.norm(p) # Unit distance
         
         if backtrack:
-            a_k, iter_succ = backtracking_linesearch(f, grad, p_k, x_k)
+            a, iter_succ = backtracking_linesearch(f, grad, p, x0)
         else:
-            a_k, iter_succ = linesearch(f, grad, p_k, x_k, 1e-4, 0.9)
+            a, iter_succ = linesearch(f, grad, p, x0, 1e-4, 0.5)
         
-        x_next = x_k + a_k * p_k
-        dF_next = grad(x_next)
-        
-        s_k = x_next - x_k
-        y_k = dF_next - dF
+        x1 = x0 + a * p
+        dF1 = grad(x1)
+        s = x1 - x0
+        y = dF1 - dF0
         
         # Check if "reboot" is needed
-        if not s_k.dot(y_k) > 0:
-            rho_k = 1/s_k.dot(y_k)
+        if not s.dot(y) > 0:
             it += 1
+            print("Iter {}, Non-update, curvature".format(it))
             continue
-            
+        
         # computing rho (6.14 in NW)
-        rho_k = 1/s_k.dot(y_k)
-        H = (I - rho_k * s_k * y_k.T) @ H @ (I - rho_k * y_k * s_k.T) + rho_k * s_k * s_k.T
+        rho = 1/y.dot(s)
+        H = (I - rho * np.outer(s, y)).dot(H).dot(I - rho * np.outer(s, y))\
+             + rho * np.outer(s, s)
 
         it += 1
-        x_k = x_next
-        dF = dF_next
 
-    return x_k, it, f(x_k)
+    print("BFGS, iter {}, f(x) = {}".format(it, f(x1)))
+    return x1, it, f(x1)
     
     
 if __name__ == "__main__":
     import Model2 as m2
-
     m, n = (15, 2)
     Util.optimize_random(m, n, bfgs, m2.f, m2.df, m2.H)
     plt.show()    
