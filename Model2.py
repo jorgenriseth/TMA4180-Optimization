@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 import Util
-
 
 # Calculate h for single point z
 def hi(x, zi):
@@ -20,10 +18,10 @@ def H(X, A, b):
 #Calculate residual vector
 def R(x, Z, W):
     m, n = Z.shape
-    R = np.zeros(m)
-    for i in range(R.size):
-        R[i] = r(x, Z[i], W[i])
+    A, b = Util.from_x_to_matrix(x)
+    R = np.maximum(H(Z, A, b) * W, 0)
     return R
+
 
 # Calculate objective function
 def f(x, Z, W):
@@ -70,8 +68,9 @@ def df(x, Z, W, h = None):
 ################# RUN TEST ###################
 # Finite difference test of gradient
 def finite_difference_test(m = 10, n = 2):
-    x, Z, W = generate_random(m, n)
     k = n*(n+1)//2
+    Z, W = Util.generate_random(m, n)
+    x = np.random.randn(n+k)
     p = np.random.randn(n+k)
     p = p/np.linalg.norm(p)
     f0 = f(x, Z, W)
@@ -87,3 +86,5 @@ def finite_difference_test(m = 10, n = 2):
             error = abs(g_app-g)/abs(g)
             print('ep = %e, error = %e, g_app = %e' % (ep,error, g_app))
 
+if __name__ == "__main__":
+    finite_difference_test()
