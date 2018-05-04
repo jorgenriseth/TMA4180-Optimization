@@ -4,6 +4,15 @@ import Util
 
 ##### ALGORITHMS #############################################
 # NW Algorithm 3.1, p.37
+def constraints(x, eig):
+    c1 = x[0] - eig[0]
+    c2 = -x[0] + eig[1]
+    c3 = x[2] - eig[0]
+    c4 = -x[2] + eig[1]
+    #c5 = x[0]*x[2] - (eig[0]**2 + x[1]**2)
+    c5 = np.sqrt(x[0] * x[2]) - np.sqrt((eig[0]**2 + x[1]**2))
+    return np.array((c1, c2, c3, c4, c5))
+
 def backtracking_linesearch(f, gradf, p, x):
     rho = 0.5
     c = 0.05
@@ -25,15 +34,17 @@ def backtracking_linesearch(f, gradf, p, x):
     
 
 # NW Algorithm 3.5, Line Search, p.60
-def linesearch(f, grad, p, x, c1 = 1e-4, c2= 0.9):
+def linesearch(f, grad, p, x, c1 = 1e-4, c2= 0.9, constraint = None):
     a_max = 2
     a0 = 0     # Corresponding to alpha_i-1
     a1 = a_max/2    # Coresponding to alpha_i
-    it_stop = 200
+    it_stop = 100
 
-    phi0 = f(x, )
+    phi0 = f(x)
     Dphi0 = grad(x).dot(p)
 
+    while constraint != None and (not Util.is_feasible(constraint , x)):
+        a1 *= 0.5
 
     it = 0
     while it < it_stop:
@@ -52,10 +63,7 @@ def linesearch(f, grad, p, x, c1 = 1e-4, c2= 0.9):
 
         a0 = a1
 
-        if a_max == np.inf:
-            a1 *= 2
-        else:
-            a1 = (a1 + a_max)/2
+        a1 = (a1 + a_max)/2
         it += 1
     
     convergence = it_stop == it
@@ -91,10 +99,10 @@ def zoom(a_lo, a_hi, f, grad, x, p, c1, c2):
 
 # Optimization algorithms
 # NW Steepest Descent, ~p.21
-def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = False, output = False):
+def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = True, output = False):
     p = -grad(x0)
     x1 = x0
-    it_stop = 200
+    it_stop = 1000
 
     it = 0
     while np.linalg.norm(p) > TOL and it < it_stop:
@@ -111,12 +119,13 @@ def steepest_descent(f, grad, x0, TOL = 1e-4, backtrack = False, output = False)
 
     return x1, it, f(x1)
 
-def bfgs_constrained(f, grad, x0, constraint_func = None, TOL = 1e-4, backtrack = False):
-    assert constraint_func
+def bfgs_constrained(f, grad, x0, constraint_func, TOL = 1e-4, backtrack = False):
+    
     if not Util.is_feasible(constraint_func, x0):
         print("Not feasible x0: {}, c(x):".format(x0))
         raise Exception("Not feasible startpoint")
-    it_stop = 1000
+    
+    it_stop = 200
     I = np.identity(x0.size)
     H = I
     x1 = x0
@@ -127,31 +136,35 @@ def bfgs_constrained(f, grad, x0, constraint_func = None, TOL = 1e-4, backtrack 
         it += 1
         dF0 = dF1
         x0 = x1
+
         p = -H.dot(dF0)
 
         if p.dot(dF0) > 0: # Check if truly descent dir
-            print("Reboot, not descent dir")
+            print("Reboot Iter {}:  not descent dir".format(it))
             H = I
             continue
         
         p = p/np.linalg.norm(p) #Unit direction vector
 
-        a, iter_succ = linesearch(f, grad, p, x0)
-        x1 = x0 + a*p
-        inner = 0
-        while not Util.is_feasible(constraint_func, x1):
-            a = a * 0.1
+        a, iter_succ = linesearch(f, grad, p, x0, constraint = constraint_func)
+        x1 = x0 + a*p  
+
+        if not Util.is_feasible(constraint_func, x1) and a > 0:
+            a *= 0.5
             x1 = x0 + a*p
-            inner += 1
+        
+        if a == 0:
+            print("No movement, iter {}".format(it))
+            return x1, it, f(x1)
 
         dF1 = grad(x1)
         s = x1 - x0
         y = dF1 - dF0
 
-
         if not y.dot(s) > 0: # Check curvature conditions
             print("Iter {}, Non-update, curvature".format(it))
             continue
+
         rho = 1/y.dot(s)
         H = (I - rho * np.outer(s, y)).dot(H).dot(I - rho * np.outer(s, y))\
         + rho * np.outer(s, s)
@@ -163,7 +176,7 @@ def bfgs_constrained(f, grad, x0, constraint_func = None, TOL = 1e-4, backtrack 
 
 # Optimization algorithm
 def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False):
-    it_stop = 10000
+    it_stop = 1000
     I = np.identity(x0.size)
     H = I
     x1 = x0
@@ -171,6 +184,7 @@ def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False):
     
     it = 0
     while np.linalg.norm(dF1) > TOL and it < it_stop:
+        it += 1
         dF0 = dF1
         x0 = x1
         p = - H.dot(dF0)
@@ -201,8 +215,6 @@ def bfgs(f, grad, x0, TOL = 1e-4, backtrack = False):
         rho = 1/y.dot(s)
         H = (I - rho * np.outer(s, y)).dot(H).dot(I - rho * np.outer(s, y))\
              + rho * np.outer(s, s)
-
-        it += 1
 
     print("BFGS, iter {}, f(x) = {}".format(it, f(x1)))
     return x1, it, f(x1)

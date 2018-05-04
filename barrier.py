@@ -10,7 +10,8 @@ def constraints(x, eig):
     c2 = -x[0] + eig[1]
     c3 = x[2] - eig[0]
     c4 = -x[2] + eig[1]
-    c5 = np.sqrt(x[0] * x[2]) - np.sqrt((eig[0]**2 + x[1]**2))
+    c5 = x[0]*x[2] - (eig[0]**2 + x[1]**2)
+    #c5 = np.sqrt(x[0] * x[2]) - np.sqrt((eig[0]**2 + x[1]**2))
     return np.array((c1, c2, c3, c4, c5))
 
 def grad_constraints(x, eig):
@@ -19,7 +20,8 @@ def grad_constraints(x, eig):
     dc[1, 0] = -1
     dc[2, 2] = 1
     dc[3, 2] = -1
-    dc[4,:3] = [np.sqrt(x[2]/(4*x[0])), -x[1]/np.sqrt(eig[0]**2 + x[1]**2), np.sqrt(x[0]/(4*x[2]))]
+    dc[4,:3] = [ x[2], -2*x[1], x[0] ]
+    #dc[4,:3] = [np.sqrt(x[2]/(4*x[0])), -x[1]/np.sqrt(eig[0]**2 + x[1]**2), np.sqrt(x[0]/(4*x[2]))]
     return dc
 
 def set_constraints(eig):
@@ -27,16 +29,19 @@ def set_constraints(eig):
              lambda x: grad_constraints(x, eig)
 
 def lagrange(x, f, cf, lambstar):
-    return f(x) + cf(x).dot(lambstar)
+    return f(x) - cf(x).dot(lambstar)
 
 def grad_lagrange(x, df, dcf, lambstar):
-    return df(x) + (dcf(x).T).dot(lambstar)
+    return df(x) - (dcf(x).T).dot(lambstar)
 
 def compute_lagrange(x, cf, mu):
     return mu/cf(x)
 
 def log_barrier(x, f, cf, mu):
-    return f(x) - mu * np.sum(np.log(cf(x)))
+    C = cf(x)
+    if not (C > 0).all():
+        return np.inf
+    return f(x) - mu * np.sum(np.log(C))
 
 def grad_log_barrier(x, df, c, dcf, mu):
     return df(x) - mu *np.sum(dcf(x).T/c(x), axis = 1)
@@ -49,7 +54,7 @@ def KKT(x, f, df, cf, dcf, lambstar, mu, TOL = 1e-2):
     C = cf(x)
     GL = grad_lagrange(x, df, dcf, lambstar)
     if np.linalg.norm(GL) > TOL:
-        print("Grad_Lagrange : {}".format(GL))
+        print("Grad_Lagrange : {}, norm = {}".format(GL, np.linalg.norm(GL)))
         return False
     if C.any() < 0:
         print("Not feasible")
@@ -62,11 +67,13 @@ def KKT(x, f, df, cf, dcf, lambstar, mu, TOL = 1e-2):
         return False
     return True
 
-def barrier(f, df, x0, cf, dcf, TOL = 1e-5):
+def barrier(f, df, x0, cf, dcf, TOL = 1e-4):
     R = []
     mu = 1
     primal_TOL = 1e-4
-    it_stop = 10
+    it_stop = 15
+
+    assert Util.is_feasible(cf, x0)
 
     it = 0
     x = x0
@@ -74,19 +81,20 @@ def barrier(f, df, x0, cf, dcf, TOL = 1e-5):
         it += 1
         print("Iter: {}".format(it))
         P, dP = set_barrier(f, df, cf, dcf, mu)
-        x, it1, f1, r = alg.bfgs(P, dP, x0, primal_TOL)
+        x, it1, f1  = alg.bfgs_constrained(P, dP, x, cf, primal_TOL)
+
 
         lagmult = compute_lagrange(x, cf, mu)
         
-        if KKT(x, P, dP, cf, dcf, lagmult, lagmult, TOL):
-            return x, it, f1
+        if KKT(x, P, dP, cf, dcf, lagmult, mu, TOL):
+            return x, it, f1, R
             
         """
         if mu < TOL:
             break
         """
 
-        mu *= 0.1
+        mu *= 0.3
         R.append(np.linalg.norm(grad_lagrange(x, dP, dcf, lagmult)))
         
 
@@ -99,7 +107,7 @@ def barrier(f, df, x0, cf, dcf, TOL = 1e-5):
 
 if __name__ == "__main__":
     m, n = 20, 2
-    eig =  np.abs(np.array((1, 16)) + np.random.randn(2))
+    eig =  np.abs(np.array((1, 2))) #+ np.random.randn(2))
     cf, dcf = set_constraints(eig)
     #x = Util.get_random_feasible(constraints, eig)
     x = Util.get_random_non_feasible(constraints, eig)

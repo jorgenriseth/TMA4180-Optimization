@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Retrieve dimensions from matrix x
+# Retrieve dimensions from vector x
 def get_n(x):
     return int((-3 + np.sqrt(9+8*x.size))//2)
 
@@ -23,9 +23,11 @@ def from_x_to_matrix(x):
 def set_function(F, dF, Z, W):
     return lambda x: F(x, Z, W), lambda x: dF(x, Z, W)
 
+# Check if chosen direction actually is a descent direction
 def is_descent(p, gradient_vector):
     return p.dot(gradient_vector) < 0
 
+# Check wethater given x is within the feasible set
 def is_feasible(cf, x):
     return (cf(x) > 0).all()
 
@@ -45,24 +47,32 @@ def get_feasible(eigs):
     x = np.zeros(5)
     x[0] = (eigs[0] + eigs[1])/2
     x[2] = (eigs[0] + eigs[1])/2
-    x[1] = np.sqrt(x[0]*x[2] - eigs[0]*eigs[1])
+    x[1] = 0#np.sqrt(x[0]*x[2] - eigs[0]*eigs[1])
     return x
 
 def get_random_feasible(constraints, eigs):
-    cf = lambda x: constraints(x, *eigs)
+    cf = lambda x: constraints(x, eigs)
     x = np.random.randn(5)
     while not is_feasible(cf, x):
         x = np.random.randn(5)
     return x
-
-
-
 
 def get_non_feasible(eigs):
     x = np.zeros(5)
     x[0] = (eigs[0] + eigs[1])/2
     x[2] = -(eigs[0] + eigs[1])/2
     x[1] = 0
+    return x
+
+def get_random_non_feasible(constraints, eigs):
+    cf = lambda x: constraints(x, *eigs)
+    x = np.random.randn(5)
+    A, b = from_x_to_matrix(x)
+    l = np.linalg.eigvals(A)
+    while l[0] * l[1] > 0:
+        x = np.random.randn(5)
+        A, b = from_x_to_matrix(x)
+        l = np.linalg.eigvals(A)
     return x
 
 # Generate test set fitted to start value

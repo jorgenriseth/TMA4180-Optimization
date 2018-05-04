@@ -77,7 +77,7 @@ def barrier(x0, f, df, eigs, mu0, TOL):
         print(dp(x0))
 
 
-        x1, linesearch_iter, fk = alg.bfgs(p, dp, x, TOL = 1/it**2, backtrack = True, output = True)
+        x1, linesearch_iter, fk = alg.bfgs(p, dp, x, TOL = 1/it**2, backtrack = True)
         print("bfgs_done")
         C = constraints(x, *eigs)
         dC = grad_constraints(x, *eigs)
@@ -101,7 +101,7 @@ def bfgs_constrained(f, grad, x0, cf, dcf, TOL = 1e-4):
     H = I
     dF1 = grad(x0)
     x1 = x0
-    assert is_feasible(cf, x)
+    assert is_feasible(cf, x0)
 
     it = 0
     while np.linalg.norm(dF1) > TOL and it < it_stop:
@@ -181,7 +181,7 @@ def test_method(method, constraints = None, feasible = True):
 
     # Find and visualize x anew
     if constraints:
-        x1, it1, f1 = method(f, df, x0, cf)
+        x1, it1, f1 = method(f, df, x0)
     else:
         x1, it1, f1 = method(f, df, x0, backtrack = False)
     A1, b1 = Util.from_x_to_matrix(x1)
@@ -191,4 +191,4 @@ def test_method(method, constraints = None, feasible = True):
     plt.show()
 
 if __name__ == "__main__":
-    test_method(alg.bfgs_constrained, constraints, feasible = True)
+    test_method(alg.bfgs, constraints, feasible = False)
